@@ -390,11 +390,12 @@ from sklearn.metrics import precision_recall_fscore_support
 ytrue=[]
 ypred=[]
 for y in Ytest:
-    if y==[1,0,0]:
+    print(y)
+    if y[0]==1:
         ytrue.append(0)
-    if y==[0,1,0]:
+    elif y[1]==1:
         ytrue.append(1)
-    if y==[0,0,1]:
+    else:
         ytrue.append(2)
 
 
