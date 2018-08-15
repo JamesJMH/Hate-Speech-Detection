@@ -81,7 +81,7 @@ with open("wassem_hovy_naacl.csv", encoding="utf-8")as f:
         splitted=tweet.split()
         to_append=[]
         for tw in splitted:
-            if tw not in punctuation and tw not in STOPWORDS and "@" not in tw:
+            if tw not in punctuation and "@" not in tw and tw[:4]!='http':
                 to_append.append(tw)
         X_text.append(to_append)
         # if label=="none":
@@ -98,9 +98,26 @@ with open("wassem_hovy_naacl.csv", encoding="utf-8")as f:
             Y.append(1)
 
 
+# with open("labeled_data.csv","rU", encoding="utf-8") as f:
+#     readCSV = csv.reader(f, delimiter=',')
+#     for row in readCSV:
+#         tweet=(row[6]) #row[6]
+#         label=(row[5]) #row[5]
+#         tweet = tweet.lower()
+#         # label = label.encode('utf-8')
+#         splitted = tweet.split()
+#         to_append = []
+#         for tw in splitted:
+#             if tw not in punctuation and tw not in STOPWORDS and "@" not in tw:
+#                 to_append.append(tw)
+#         X_text.append(to_append)
+#         if label == "0":
+#             Y.append(1)
+#         else:
+#             Y.append(0)
+
 # using pretrained glove file
 X_text=X_text[1:]
-test_tweets=X_text[:200]
 for tweet in X_text:
     cur=[]
     for words in tweet:
@@ -145,20 +162,23 @@ for line in X:
 X=np.array(X)
 Y=np.array(Y)
 
-def shuffle_in_unison_scary(a, b):
+def shuffle_in_unison_scary(a, b, c):
     rng_state = np.random.get_state()
     np.random.shuffle(a)
     np.random.set_state(rng_state)
     np.random.shuffle(b)
+    np.random.set_state(rng_state)
+    np.random.shuffle(c)
 
 
-shuffle_in_unison_scary(X,Y)
+shuffle_in_unison_scary(X,Y, X_text)
 
 
-Xtest=X[:200, :]
-X=X[200:, :]
-Ytest=Y[:200]
-Y=Y[200:]
+Xtest=X[:500, :]
+X=X[500:, :]
+Ytest=Y[:500]
+Y=Y[500:]
+X_text=X_text[:500]
 
 
 
@@ -219,7 +239,7 @@ model.fit(X, Y, epochs=8)
 
 preds=(model.predict_classes(Xtest))
 for i in range(len(preds)):
-    print(test_tweets[i], "\t", preds[i], "\t", Ytest[i])
+    print(X_text[i], "\t", preds[i], "\t", Ytest[i])
 
 print(model.evaluate(Xtest, Ytest, verbose=0))
 
