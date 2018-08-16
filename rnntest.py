@@ -68,7 +68,7 @@ from collections import defaultdict
 X_text = []
 X=[]
 Y = []
-
+Y_raw=[]
 
 
 with open("wassem_hovy_naacl.csv", encoding="utf-8")as f:
@@ -81,7 +81,7 @@ with open("wassem_hovy_naacl.csv", encoding="utf-8")as f:
         splitted=tweet.split()
         to_append=[]
         for tw in splitted:
-            if tw not in punctuation and "@" not in tw and tw[:4]!='http':
+            if tw not in punctuation and "@" not in tw and tw[:4]!='http': #and tw not in STOPWORDS
                 to_append.append(tw)
         X_text.append(to_append)
         # if label=="none":
@@ -94,27 +94,15 @@ with open("wassem_hovy_naacl.csv", encoding="utf-8")as f:
 
         if label=="none":
             Y.append(0)
-        else:
+            Y_raw.append(0)
+        elif label=="sexism":
             Y.append(1)
+            Y_raw.append(1)
+        elif label=="racism":
+            Y.append(1)
+            Y_raw.append(2)
 
 
-# with open("labeled_data.csv","rU", encoding="utf-8") as f:
-#     readCSV = csv.reader(f, delimiter=',')
-#     for row in readCSV:
-#         tweet=(row[6]) #row[6]
-#         label=(row[5]) #row[5]
-#         tweet = tweet.lower()
-#         # label = label.encode('utf-8')
-#         splitted = tweet.split()
-#         to_append = []
-#         for tw in splitted:
-#             if tw not in punctuation and tw not in STOPWORDS and "@" not in tw:
-#                 to_append.append(tw)
-#         X_text.append(to_append)
-#         if label == "0":
-#             Y.append(1)
-#         else:
-#             Y.append(0)
 
 # using pretrained glove file
 X_text=X_text[1:]
@@ -162,16 +150,18 @@ for line in X:
 X=np.array(X)
 Y=np.array(Y)
 
-def shuffle_in_unison_scary(a, b, c):
+def shuffle_in_unison(a, b, c,d):
     rng_state = np.random.get_state()
     np.random.shuffle(a)
     np.random.set_state(rng_state)
     np.random.shuffle(b)
     np.random.set_state(rng_state)
     np.random.shuffle(c)
+    np.random.set_state(rng_state)
+    np.random.shuffle(d)
 
 
-shuffle_in_unison_scary(X,Y, X_text)
+shuffle_in_unison(X,Y, X_text, Y_raw)
 
 
 Xtest=X[:500, :]
