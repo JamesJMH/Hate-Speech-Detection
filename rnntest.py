@@ -98,7 +98,7 @@ with open("wassem_hovy_naacl.csv", encoding="utf-8")as f:
         elif label=="sexism":
             Y.append(1)
             Y_raw.append(1)
-        elif label=="racism":
+        else:
             Y.append(1)
             Y_raw.append(2)
 
@@ -135,7 +135,7 @@ for tweet in X_text:
 
 # X=X[1:]
 Y=Y[1:]
-
+Y_raw=Y_raw[1:]
 # add padding
 maxlen=0
 for line in X:
@@ -149,6 +149,7 @@ for line in X:
 
 X=np.array(X)
 Y=np.array(Y)
+Y_raw=np.array(Y_raw)
 
 def shuffle_in_unison(a, b, c,d):
     rng_state = np.random.get_state()
@@ -162,19 +163,21 @@ def shuffle_in_unison(a, b, c,d):
 
 
 shuffle_in_unison(X,Y, X_text, Y_raw)
+test_size=1000
 
+Xtest=X[:test_size, :]
+X=X[test_size:, :]
+Ytest=Y[:test_size]
+Y=Y[test_size:]
+X_text=X_text[:test_size]
+Y_raw_test=Y_raw[:test_size]
+Y_raw=Y_raw[test_size:]
 
-Xtest=X[:500, :]
-X=X[500:, :]
-Ytest=Y[:500]
-Y=Y[500:]
-X_text=X_text[:500]
 
 
 
 timesteps=maxlen # number of words in a sentence
 input_dim=100 # dimension of embedding
-features=100
 
 
 hidden_size=200
@@ -182,7 +185,6 @@ hidden_size=200
 model = Sequential()
 model.add(LSTM(hidden_size, return_sequences=True, input_shape=(timesteps, input_dim)))
 model.add(Dropout(0.5))
-# model.add(LSTM(hidden_size))
 model.add(Flatten())
 model.add(Dense(1,activation='sigmoid'))
 
@@ -194,44 +196,51 @@ model.add(Dense(1,activation='sigmoid'))
 # model.add(TimeDistributed(Dense(len(w2v))))
 # model.add(Activation('softmax'))
 
-optim=RMSprop(lr=0.001)
+# optim=RMSprop(lr=0.001)
 model.compile(loss='binary_crossentropy', optimizer="adam", metrics=['accuracy'])
 model.fit(X, Y, epochs=8)
 
 
+# second step
+Y2=[]
+X2=[]
+for i in range(len(Y_raw)):
+    if Y_raw[i]!=0:
+        if Y_raw[i]==2:
+            Y2.append(1)
+        else:
+            Y2.append(0)
+        X2.append(X[i])
 
-# test_X = ['The Palestinians are beasts walking on two legs'.split(),
-#           'speech that is intended to offend, insult, intimidate, or threaten an individual or group based on a trait or attribute, such as sexual orientation, religion, color, gender, or disability'.split(),
-#           ['purple'],
-#           ['trump'],
-#           'Wipe out the Jews'.split(),
-#           'Women are like grass, they need to be beaten/cut regularly'.split(),
-#           '8 mins til JesusChristSuperstarLive!! I cant wait to learn about Jesus and superstars'.split(),
-#           'seen this one, the popsicle sticks are a keyboard. He moved to  to follow his. Wait, are they from other shows?'.split(),
-#           'fuck the muslims'.split(),
-#           'women are stupid'.split(),
-#           'you jew fag lmao'.split()]
+X2=np.array(X2)
+Y2=np.array(Y2)
 
 
-
-# test=[]
-# for tweet in test_X:
-#     cur=[]
-#     for words in tweet:
-#         if words in w2v:
-#             cur.append(w2v[words])
-#     if len(cur)<32:
-#         for i in range(32-len(cur)):
-#             cur.append([0.0]*100)
-#     test.append(cur)
-# test_X=np.array(test)
+hidden_size=100
+# tokenize and build vocab
+model2 = Sequential()
+model2.add(LSTM(hidden_size, return_sequences=True, input_shape=(timesteps, input_dim)))
+model2.add(Dropout(0.5))
+# model.add(LSTM(hidden_size))
+model2.add(Flatten())
+model2.add(Dense(1,activation='sigmoid'))
+model2.compile(loss='binary_crossentropy', optimizer="adam", metrics=['accuracy'])
+model2.fit(X2, Y2, epochs=3)
 
 
 preds=(model.predict_classes(Xtest))
 for i in range(len(preds)):
-    print(X_text[i], "\t", preds[i], "\t", Ytest[i])
+    if preds[i]==1:
+        to_change=[]
+        to_change.append(Xtest[i])
+        to_change=np.array(to_change)
+        pred2=model2.predict_classes(to_change)[0]
+        if pred2==1:
+            preds[i]=2
+        else:
+            preds[i]=1
 
-print(model.evaluate(Xtest, Ytest, verbose=0))
+# print(model.evaluate(Xtest, Ytest, verbose=0))
 
 from sklearn.metrics import precision_recall_fscore_support
 # ytrue=[]
@@ -245,4 +254,4 @@ from sklearn.metrics import precision_recall_fscore_support
 #         ytrue.append(2)
 
 
-print(precision_recall_fscore_support(Ytest, preds))
+print(precision_recall_fscore_support(Y_raw_test, preds))
