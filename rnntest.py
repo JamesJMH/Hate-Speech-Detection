@@ -172,6 +172,7 @@ Y=Y[test_size:]
 X_text=X_text[:test_size]
 Y_raw_test=Y_raw[:test_size]
 Y_raw=Y_raw[test_size:]
+X_text=X_text[:test_size]
 
 
 
@@ -254,4 +255,29 @@ from sklearn.metrics import precision_recall_fscore_support
 #         ytrue.append(2)
 
 
+f1=open("sexism.txt", "a+", encoding="utf-8")
+f2=open("racism.txt", "a+", encoding="utf-8")
 print(precision_recall_fscore_support(Y_raw_test, preds))
+for i in range(len(preds)):
+    if preds[i]==0 and Y_raw_test[i]==1:
+        #misclassified sexism
+        state=True
+        line=" ".join(X_text[i])
+        for l in f1:
+            if l==line:
+                state=False
+        if state:
+            f1.write(line)
+            f1.write("\n")
+    if preds[i]==0 and Y_raw_test[i]==2:
+        #misclassified racism
+        state = True
+        line = " ".join(X_text[i])
+        for l in f2:
+            if l == line:
+                state = False
+        if state:
+            f2.write(line)
+            f2.write("\n")
+f1.close()
+f2.close()
