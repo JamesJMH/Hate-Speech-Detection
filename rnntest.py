@@ -205,17 +205,21 @@ def falseNeg(dict_s, dict_r, w2v):
 
     print(precision_recall_fscore_support(Y_raw_test, preds))
     for i in range(len(preds)):
-        if preds[i]==0 and Y_raw_test[i]==1:
+        if Y_raw_test[i]==1:
             #misclassified sexism
             line=" ".join(X_text[i])
             if line in dict_s:
-                dict_s[line]+=1
+                dict_s[line][1]+=1
             else:
-                dict_s[line]=1
-        if preds[i]==0 and Y_raw_test[i]==2:
+                dict_s[line]=[0,1]
+            if preds[i]==0:
+                dict_s[line][0]+=1
+        if Y_raw_test[i]==2:
             #misclassified racism
-            line = " ".join(X_text[i])
+            line=" ".join(X_text[i])
             if line in dict_r:
-                dict_r[line]+=1
+                dict_r[line][1]+=1
             else:
-                dict_r[line]=1
+                dict_r[line]=[0,1]
+            if preds[i]==0:
+                dict_r[line][0]+=1

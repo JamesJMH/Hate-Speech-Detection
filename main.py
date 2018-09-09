@@ -18,7 +18,7 @@ w2v=loadGloveModel("glove.twitter.27B.100d.txt")
 dict_s={}
 dict_r={}
 
-for i in range(10):
+for i in range(200 ):
     rnntest.falseNeg(dict_s, dict_r, w2v)
 
 f1=open("sexism.txt", "a+", encoding="utf-8")
@@ -31,5 +31,5 @@ f1.close()
 
 for key in dict_r:
     f2.write(key + "\t" + str(dict_r[key]))
-    f1.write("\n")
+    f2.write("\n")
 f2.close()
