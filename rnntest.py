@@ -72,15 +72,6 @@ with open("wassem_hovy_naacl.csv", encoding="utf-8")as f:
         # label = label.encode('utf-8')
         for word in tweet.split():
             X_text.append(tweet.split())
-                # if label=="The tweet uses offensive language but not hate speech":
-                #     Y.append(1)
-            # if label=="none":
-            #     Y.append(0)
-            #     # elif label=="1":
-            #     #     Y.append(1)
-            # else:
-            #     Y.append(1)
-
             if label=="none":
                 Y.append([1, 0,0])
 
@@ -126,57 +117,71 @@ def shuffle_in_unison_scary(a, b):
 
 shuffle_in_unison_scary(X,Y)
 
+Xtest = X[:1000, :]
+X_active=X[6000:, :]
+X = X[1000:6000, :]
+Ytest = Y[:1000]
+Y_active=Y[6000:, :]
+Y = Y[1000:6000]
+results=[]
 
-Xtest=X[:1000, :]
-X=X[1000:, :]
-Ytest=Y[:1000]
-Y=Y[1000:]
+def lstm(Xtest, Ytest, X_active, Y_active, X, Y, maxlen, results):
 
-
-
-timesteps=maxlen # number of words in a sentence
-input_dim=100 # dimension of embedding
-# features=100
-
-
-hidden_size=200
-
-model = Sequential()
-model.add(LSTM(hidden_size, return_sequences=True, input_shape=(timesteps, input_dim)))
-model.add(Dropout(0.5))
-model.add(Flatten())
-model.add(Dense(3,activation='softmax'))
+    timesteps=maxlen # number of words in a sentence
+    input_dim=100 # dimension of embedding
 
 
-# model = Sequential()
-# model.add(LSTM(hidden_size, return_sequences=True, input_shape=(timesteps, input_dim)))
-# model.add(LSTM(hidden_size, return_sequences=True))
-# model.add(Dropout(0.5))
-# model.add(TimeDistributed(Dense(len(w2v))))
-# model.add(Activation('softmax'))
+    hidden_size=200
+
+    model = Sequential()
+    model.add(LSTM(hidden_size, return_sequences=True, input_shape=(timesteps, input_dim)))
+    model.add(Dropout(0.5))
+    model.add(Flatten())
+    model.add(Dense(3,activation='softmax'))
 
 
-model.compile(loss='categorical_crossentropy', optimizer="adam", metrics=['accuracy'])
-model.fit(X, Y, epochs=5)
+
+    model.compile(loss='categorical_crossentropy', optimizer="adam", metrics=['accuracy'])
+    model.fit(X, Y, epochs=5)
 
 
 
 
-preds=(model.predict_classes(Xtest))
+    preds=(model.predict_classes(Xtest))
 
-print(model.evaluate(Xtest, Ytest, verbose=0))
+    print(model.evaluate(Xtest, Ytest, verbose=0))
 
-from sklearn.metrics import precision_recall_fscore_support
-ytrue=[]
-ypred=[]
-for y in Ytest:
-    print(y)
-    if y[0]==1:
-        ytrue.append(0)
-    elif y[1]==1:
-        ytrue.append(1)
-    else:
-        ytrue.append(2)
+    from sklearn.metrics import precision_recall_fscore_support
+    ytrue=[]
+    for y in Ytest:
+        if y[0]==1:
+            ytrue.append(0)
+        elif y[1]==1:
+            ytrue.append(1)
+        else:
+            ytrue.append(2)
+    results.append(precision_recall_fscore_support(ytrue, preds))
+
+    pred_active=model.predict(X_active[:1000, :])
+    X_cur=X_active[:1000,:]
+    # pred_class=model.predict_classes(X_active[:1000, :])
+    # for i in range(len(pred_active)):
+    #     print(pred_active[i], pred_class[i])
+    X_active=X_active[1000:, :]
+    ytrue_active=Y_active[:1000]
+    Y_active=Y_active[1000:]
+
+    for i in range(len(pred_active)):
+        pred_active[i].sort()
+        m1=pred_active[i][2]
+        m2=pred_active[i][1]
+        if m1-m2 < 0.25:
+            X=np.append(X, [X_cur[i]], axis=0)
+            Y = np.append(Y, [ytrue_active[i]], axis=0)
+    return Xtest, Ytest, X_active, Y_active, X, Y
 
 
-print(precision_recall_fscore_support(ytrue, preds))
+for i in range(9):
+    Xtest, Ytest, X_active, Y_active, X, Y=lstm(Xtest, Ytest, X_active, Y_active, X, Y, maxlen, results)
+
+print(results)
