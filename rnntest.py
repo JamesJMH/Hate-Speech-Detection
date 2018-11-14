@@ -99,7 +99,7 @@ maxlen=0
 for line in X:
     if len(line)>maxlen:
         maxlen=len(line)
-
+maxlen=60
 for line in X:
     if len(line)<maxlen:
         for i in range(maxlen-len(line)):
@@ -118,14 +118,43 @@ def shuffle_in_unison_scary(a, b):
 shuffle_in_unison_scary(X,Y)
 
 Xtest = X[:1000, :]
-X_active=X[6000:, :]
-X = X[1000:6000, :]
+X = X[1000:, :]
 Ytest = Y[:1000]
-Y_active=Y[6000:, :]
-Y = Y[1000:6000]
+Y = Y[1000:]
 results=[]
 
-def lstm(Xtest, Ytest, X_active, Y_active, X, Y, maxlen, results):
+
+def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, file):
+    X_active=[]
+    Y_active=[]
+
+    with open(file, 'r', encoding='utf-8') as input_file:
+        for line in input_file:
+            data = json.loads(line)
+            tweet = data['text']
+            tweet = strip(tweet)
+            tweet = tweet.lower()
+            label = data['label'].lower()
+            cur=[]
+            if label in ["none", "none ", "noen", "racist", 'sexist']:
+                if label=='sexist':
+                    Y_active.append([0,0,1])
+                elif label=='racist':
+                    Y_active.append([0,1,0])
+                else:
+                    Y_active.append([1,0,0])
+                for word in tweet.split(" "):
+                    if word in w2v:
+                        cur.append(w2v[word])
+            if cur:
+                X_active.append(cur)
+    for lines in X_active:
+        if len(lines) < maxlen:
+            for i in range(maxlen - len(lines)):
+                lines.append([0.0] * (100))
+
+    X_active = np.array(X_active)
+    Y_active = np.array(Y_active)
 
     timesteps=maxlen # number of words in a sentence
     input_dim=100 # dimension of embedding
@@ -162,26 +191,22 @@ def lstm(Xtest, Ytest, X_active, Y_active, X, Y, maxlen, results):
             ytrue.append(2)
     results.append(precision_recall_fscore_support(ytrue, preds))
 
-    pred_active=model.predict(X_active[:1000, :])
-    X_cur=X_active[:1000,:]
-    # pred_class=model.predict_classes(X_active[:1000, :])
-    # for i in range(len(pred_active)):
-    #     print(pred_active[i], pred_class[i])
-    X_active=X_active[1000:, :]
-    ytrue_active=Y_active[:1000]
-    Y_active=Y_active[1000:]
+
+    pred_active=model.predict(X_active)
+
 
     for i in range(len(pred_active)):
         pred_active[i].sort()
         m1=pred_active[i][2]
         m2=pred_active[i][1]
-        if m1-m2 < 0.25:
-            X=np.append(X, [X_cur[i]], axis=0)
-            Y = np.append(Y, [ytrue_active[i]], axis=0)
-    return Xtest, Ytest, X_active, Y_active, X, Y
+        if m1-m2 < 0.2 :
+            X=np.append(X, [X_active[i]], axis=0)
+            Y = np.append(Y, [Y_active[i]], axis=0)
 
+    return X, Y
 
-for i in range(9):
-    Xtest, Ytest, X_active, Y_active, X, Y=lstm(Xtest, Ytest, X_active, Y_active, X, Y, maxlen, results)
+files=['jamesjson.json', 'williamjson.json', 'trentjson.json', 'racheljson.json', 'yaxinjson.json', 'mattjson.json']
+for file in files:
+    X, Y=lstm(Xtest, Ytest,X, Y, maxlen, results, w2v, file)
 
 print(results)
