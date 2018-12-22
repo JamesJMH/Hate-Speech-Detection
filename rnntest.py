@@ -108,14 +108,14 @@ for line in X:
 X=np.array(X)
 Y=np.array(Y)
 
-def shuffle_in_unison_scary(a, b):
+def shuffle_in_unison(a, b):
     rng_state = np.random.get_state()
     np.random.shuffle(a)
     np.random.set_state(rng_state)
     np.random.shuffle(b)
 
 
-shuffle_in_unison_scary(X,Y)
+shuffle_in_unison(X,Y)
 
 Xtest = X[:1000, :]
 X = X[1000:, :]
@@ -124,37 +124,55 @@ Y = Y[1000:]
 results=[]
 
 
-def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, file):
+def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, file, iteration):
+    iter_size=2000
     X_active=[]
-    Y_active=[]
-
-    with open(file, 'r', encoding='utf-8') as input_file:
-        for line in input_file:
-            data = json.loads(line)
-            tweet = data['text']
-            tweet = strip(tweet)
-            tweet = tweet.lower()
-            label = data['label'].lower()
-            cur=[]
-            if label in ["none", "none ", "noen", "racist", 'sexist']:
-                if label=='sexist':
-                    Y_active.append([0,0,1])
-                elif label=='racist':
-                    Y_active.append([0,1,0])
-                else:
-                    Y_active.append([1,0,0])
-                for word in tweet.split(" "):
-                    if word in w2v:
-                        cur.append(w2v[word])
-            if cur:
+    start=(iteration-1)*iter_size+1
+    end=iteration*iter_size+1
+    with open(file, encoding='utf-8') as input_file:
+        CSV = csv.reader(input_file, delimiter=",")
+        i=0
+        for line in CSV:
+            if i>=start and i<end:
+                tweet=line[19]
+                tweets=tweet.lower().split()
+                cur=[]
+                for words in tweets:
+                    if words in w2v:
+                        cur.append(w2v[words])
                 X_active.append(cur)
+            i+=1
+
     for lines in X_active:
         if len(lines) < maxlen:
             for i in range(maxlen - len(lines)):
                 lines.append([0.0] * (100))
 
     X_active = np.array(X_active)
-    Y_active = np.array(Y_active)
+
+    if iteration:
+        with open("active.txt", "r+") as newInput:
+            for line in newInput:
+                tweet=line.split("\t")[0]
+                label=line.split("\t")[1]
+                cur=[]
+                if label == 'sexist':
+                    Y.append([0, 0, 1])
+                elif label == 'racist':
+                    Y.append([0, 1, 0])
+                else:
+                    Y.append([1, 0, 0])
+                for word in tweet.split(" "):
+                    if word in w2v:
+                        cur.append(w2v[word])
+                if len(cur)<maxlen and cur:
+                    for i in range(maxlen - len(cur)):
+                        cur.append([0.0] * (100))
+                if cur:
+                    X.append(cur)
+
+
+
 
     timesteps=maxlen # number of words in a sentence
     input_dim=100 # dimension of embedding
@@ -195,18 +213,19 @@ def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, file):
     pred_active=model.predict(X_active)
 
 
-    for i in range(len(pred_active)):
-        pred_active[i].sort()
-        m1=pred_active[i][2]
-        m2=pred_active[i][1]
-        if m1-m2 < 0.2 :
-            X=np.append(X, [X_active[i]], axis=0)
-            Y = np.append(Y, [Y_active[i]], axis=0)
+    with open("active.txt", "a+") as writeFile:
+        for i in range(len(pred_active)):
+            pred_active[i].sort()
+            m1=pred_active[i][2]
+            m2=pred_active[i][1]
+            if m1-m2 < 0.1 :
+                writeFile.write(" ".join(X_active[i]))
+
 
     return X, Y
 
-files=['jamesjson.json', 'williamjson.json', 'trentjson.json', 'racheljson.json', 'yaxinjson.json', 'mattjson.json']
-for file in files:
-    X, Y=lstm(Xtest, Ytest,X, Y, maxlen, results, w2v, file)
+file="hate_data_utf.csv"
+iteration=0
+X, Y=lstm(Xtest, Ytest,X, Y, maxlen, results, w2v, file, iteration)
 
 print(results)
