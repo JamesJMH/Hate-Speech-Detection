@@ -7,9 +7,6 @@ from sklearn.metrics import recall_score
 from sklearn.metrics import average_precision_score
 from sklearn.svm import SVC
 
-# import os
-# os.environ['KERAS_BACKEND'] = 'theano'
-
 from keras.models import Sequential
 from keras.layers.core import Dense, Activation
 from keras.layers.recurrent import LSTM
@@ -17,8 +14,6 @@ from keras.layers import Dropout
 from keras.layers import Flatten
 from keras.layers import TimeDistributed
 from keras.optimizers import RMSprop
-
-
 def loadGloveModel(gloveFile):
     print ("Loading Glove Model")
     f = open(gloveFile,'r', encoding="utf-8")
@@ -146,7 +141,7 @@ for lines in X_active:
 X_active = np.array(X_active)
 X_active_text = np.array(X_active_text)
 
-shuffle_in_unison(X_active_text, X_active)
+#shuffle_in_unison(X_active_text, X_active)
 
 def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, iteration, X_active, X_active_text):
     iter_size=1600
@@ -154,14 +149,17 @@ def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, iteration, X_active, X_active
     end = iteration * iter_size + 1
     X_active=X_active[start:end]
     X_active_text=X_active_text[start:end]
+
     if iteration>1:
-        with open("active.txt", "r+") as newInput:
+        with open("active.txt", "r+", encoding='utf-8') as newInput:
+            Y=Y.tolist()
+            X=X.tolist()
             for line in newInput:
                 tweet=line.split("\t")[0]
                 label=line.split("\t")[1]
                 cur=[]
                 if label == 'sexist':
-                    Y.append([0, 0, 1])
+                    Y.append([0,0,1])
                 elif label == 'racist':
                     Y.append([0, 1, 0])
                 else:
@@ -175,7 +173,8 @@ def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, iteration, X_active, X_active
                 if cur:
                     X.append(cur)
 
-
+            X=np.array(X)
+            Y=np.array(Y)
 
 
     timesteps=maxlen # number of words in a sentence
@@ -227,8 +226,8 @@ def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, iteration, X_active, X_active
 
     return X, Y
 
-
-iteration=1
+#change this
+iteration=3
 X, Y=lstm(Xtest, Ytest,X, Y, maxlen, results, w2v, iteration, X_active, X_active_text)
 
 print(results)
