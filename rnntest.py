@@ -123,34 +123,38 @@ Ytest = Y[:1000]
 Y = Y[1000:]
 results=[]
 
+X_active = []
+X_active_text = []
 
-def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, file, iteration):
-    iter_size=2000
-    X_active=[]
-    start=(iteration-1)*iter_size+1
-    end=iteration*iter_size+1
-    with open(file, encoding='utf-8') as input_file:
-        CSV = csv.reader(input_file, delimiter=",")
-        i=0
-        for line in CSV:
-            if i>=start and i<end:
-                tweet=line[19]
-                tweets=tweet.lower().split()
-                cur=[]
-                for words in tweets:
-                    if words in w2v:
-                        cur.append(w2v[words])
-                X_active.append(cur)
-            i+=1
+with open('hate_clean.csv', encoding='utf-8') as input_file:
+    CSV = csv.reader(input_file, delimiter=",")
+    for line in CSV:
+        tweet = line[19]
+        tweets = tweet.lower().split()
+        cur = []
+        for words in tweets:
+            if words in w2v:
+                cur.append(w2v[words])
+        X_active.append(cur)
+        X_active_text.append(tweet.lower())
 
-    for lines in X_active:
-        if len(lines) < maxlen:
-            for i in range(maxlen - len(lines)):
-                lines.append([0.0] * (100))
+for lines in X_active:
+    if len(lines) < maxlen:
+        for i in range(maxlen - len(lines)):
+            lines.append([0.0] * (100))
 
-    X_active = np.array(X_active)
+X_active = np.array(X_active)
+X_active_text = np.array(X_active_text)
 
-    if iteration:
+shuffle_in_unison(X_active_text, X_active)
+
+def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, iteration, X_active, X_active_text):
+    iter_size=1600
+    start = (iteration - 1) * iter_size + 1
+    end = iteration * iter_size + 1
+    X_active=X_active[start:end]
+    X_active_text=X_active_text[start:end]
+    if iteration>1:
         with open("active.txt", "r+") as newInput:
             for line in newInput:
                 tweet=line.split("\t")[0]
@@ -212,20 +216,19 @@ def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, file, iteration):
 
     pred_active=model.predict(X_active)
 
-
-    with open("active.txt", "a+") as writeFile:
+    with open("active.txt", "a+", encoding='utf-8') as writeFile:
         for i in range(len(pred_active)):
             pred_active[i].sort()
             m1=pred_active[i][2]
             m2=pred_active[i][1]
             if m1-m2 < 0.1 :
-                writeFile.write(" ".join(X_active[i]))
+                writeFile.write(X_active_text[i]+'\n\n')
 
 
     return X, Y
 
-file="hate_data_utf.csv"
-iteration=0
-X, Y=lstm(Xtest, Ytest,X, Y, maxlen, results, w2v, file, iteration)
+
+iteration=1
+X, Y=lstm(Xtest, Ytest,X, Y, maxlen, results, w2v, iteration, X_active, X_active_text)
 
 print(results)
