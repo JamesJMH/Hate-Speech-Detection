@@ -104,19 +104,68 @@ X=np.array(X)
 Y=np.array(Y)
 
 def shuffle_in_unison(a, b):
-    rng_state = np.random.get_state()
+    np.random.seed(42)
     np.random.shuffle(a)
-    np.random.set_state(rng_state)
+    np.random.seed(42)
     np.random.shuffle(b)
 
 
 shuffle_in_unison(X,Y)
 
+
+# lle to reduce dimensions
+print('Reducing dimensions ...')
+from sklearn.manifold import LocallyLinearEmbedding
+embedding = LocallyLinearEmbedding(n_components=1, random_state=42)
+X_red=[]
+for x in X:
+    x = embedding.fit_transform(x)
+    cur=[]
+    for xs in x:
+        cur.append(xs[0])
+    X_red.append(cur)
+X=np.array(X_red)
+print('Done')
+
+# divide into train and test sets
+
 Xtest = X[:1000, :]
-X = X[1000:, :]
-Ytest = Y[:1000]
-Y = Y[1000:]
+Xtrain = X[1000:, :]
+ytest = Y[:1000]
+ytrain = Y[1000:]
 results=[]
+
+# resampling by smote
+print('Oversampling ...')
+from imblearn.over_sampling import SMOTE
+from imblearn.over_sampling import RandomOverSampler
+sm = SMOTE(random_state=42, sampling_strategy='not majority')
+X_res, Y_res=sm.fit_resample(Xtrain, ytrain)
+print(X_res.shape)
+print(Y_res.shape)
+print('Done')
+
+# make X back into the 3 dimensional format, maybe back into the unreduced format
+print('Reverting X back to 3D')
+Xtrain_fin=[]
+for x in X_res:
+    cur=[]
+    for x1 in x:
+        cur.append([x1])
+    Xtrain_fin.append(cur)
+Xtrain=np.array(Xtrain_fin)
+print('Xtrain shape', Xtrain.shape)
+
+Xtest_fin=[]
+for x in Xtest:
+    cur=[]
+    for x1 in x:
+        cur.append([x1])
+    Xtest_fin.append(cur)
+Xtest=np.array(Xtest_fin)
+print('Xtest shape', Xtest.shape)
+print('Done')
+
 
 X_active = []
 X_active_text = []
@@ -155,8 +204,8 @@ def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, iteration, X_active, X_active
             Y=Y.tolist()
             X=X.tolist()
             for line in newInput:
-                tweet=line.split("\t")[0]
-                label=line.split("\t")[1]
+                tweet=line.split("\t")[0].strip()
+                label=line.split("\t")[1].strip()
                 cur=[]
                 if label == 'sexist':
                     Y.append([0,0,1])
@@ -178,7 +227,7 @@ def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, iteration, X_active, X_active
 
 
     timesteps=maxlen # number of words in a sentence
-    input_dim=100 # dimension of embedding
+    input_dim=1 # dimension of embedding
 
 
     hidden_size=200
@@ -192,7 +241,7 @@ def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, iteration, X_active, X_active
 
 
     model.compile(loss='categorical_crossentropy', optimizer="adam", metrics=['accuracy'])
-    model.fit(X, Y, epochs=5)
+    model.fit(X, Y, epochs=10)
 
 
 
@@ -220,14 +269,14 @@ def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, iteration, X_active, X_active
             pred_active[i].sort()
             m1=pred_active[i][2]
             m2=pred_active[i][1]
-            if m1-m2 < 0.1 :
+            if m1-m2 < 0.2 :
                 writeFile.write(X_active_text[i]+'\n\n')
 
 
     return X, Y
 
 #change this
-iteration=3
-X, Y=lstm(Xtest, Ytest,X, Y, maxlen, results, w2v, iteration, X_active, X_active_text)
+iteration=1
+X, Y=lstm(Xtest, ytest,Xtrain, ytrain, maxlen, results, w2v, iteration, X_active, X_active_text)
 
 print(results)
