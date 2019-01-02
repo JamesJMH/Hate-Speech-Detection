@@ -143,6 +143,7 @@ sm = SMOTE(random_state=42, sampling_strategy='not majority')
 X_res, Y_res=sm.fit_resample(Xtrain, ytrain)
 print(X_res.shape)
 print(Y_res.shape)
+ytrain=Y_res
 print('Done')
 
 # make X back into the 3 dimensional format, maybe back into the unreduced format
@@ -230,7 +231,7 @@ def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, iteration, X_active, X_active
     input_dim=1 # dimension of embedding
 
 
-    hidden_size=200
+    hidden_size=1000
 
     model = Sequential()
     model.add(LSTM(hidden_size, return_sequences=True, input_shape=(timesteps, input_dim)))
