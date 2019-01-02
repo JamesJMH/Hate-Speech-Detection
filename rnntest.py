@@ -112,21 +112,6 @@ def shuffle_in_unison(a, b):
 
 shuffle_in_unison(X,Y)
 
-
-# lle to reduce dimensions
-print('Reducing dimensions ...')
-from sklearn.manifold import LocallyLinearEmbedding
-embedding = LocallyLinearEmbedding(n_components=1, random_state=42)
-X_red=[]
-for x in X:
-    x = embedding.fit_transform(x)
-    cur=[]
-    for xs in x:
-        cur.append(xs[0])
-    X_red.append(cur)
-X=np.array(X_red)
-print('Done')
-
 # divide into train and test sets
 
 Xtest = X[:1000, :]
@@ -135,38 +120,48 @@ ytest = Y[:1000]
 ytrain = Y[1000:]
 results=[]
 
+# lle to reduce dimensions
+# print('Reducing dimensions ...')
+# from sklearn.manifold import LocallyLinearEmbedding
+# embedding = LocallyLinearEmbedding(n_components=1, random_state=42)
+# X_red=[]
+# for x in X:
+#     x = embedding.fit_transform(x)
+#     cur=[]
+#     for xs in x:
+#         cur.append(xs[0])
+#     X_red.append(cur)
+# X=np.array(X_red)
+# print('Done')
+
+# PCA for encoding
+
+from sklearn.decomposition import PCA
+Xtrain_red=[]
+for x in Xtrain:
+    Xtrain_red.append(x.flatten())
+Xtrain_red=np.array(Xtrain_red)
+# pca=PCA(n_components=3)
+# Xtrain_red=pca.fit_transform(Xtrain_red)
+
 # resampling by smote
 print('Oversampling ...')
 from imblearn.over_sampling import SMOTE
 from imblearn.over_sampling import RandomOverSampler
 sm = SMOTE(random_state=42, sampling_strategy='not majority')
-X_res, Y_res=sm.fit_resample(Xtrain, ytrain)
+X_res, Y_res=sm.fit_resample(Xtrain_red, ytrain)
 print(X_res.shape)
 print(Y_res.shape)
 ytrain=Y_res
 print('Done')
 
 # make X back into the 3 dimensional format, maybe back into the unreduced format
-print('Reverting X back to 3D')
-Xtrain_fin=[]
-for x in X_res:
-    cur=[]
-    for x1 in x:
-        cur.append([x1])
+Xtrain_fin = []
+for x1 in X_res:
+    cur=[x1[x:x+100] for x in range(0, len(x1),100)]
     Xtrain_fin.append(cur)
-Xtrain=np.array(Xtrain_fin)
-print('Xtrain shape', Xtrain.shape)
-
-Xtest_fin=[]
-for x in Xtest:
-    cur=[]
-    for x1 in x:
-        cur.append([x1])
-    Xtest_fin.append(cur)
-Xtest=np.array(Xtest_fin)
-print('Xtest shape', Xtest.shape)
-print('Done')
-
+Xtrain_fin=np.array(Xtrain_fin)
+print("final Xtrain", Xtrain_fin.shape)
 
 X_active = []
 X_active_text = []
@@ -228,10 +223,10 @@ def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, iteration, X_active, X_active
 
 
     timesteps=maxlen # number of words in a sentence
-    input_dim=1 # dimension of embedding
+    input_dim=100 # dimension of embedding
 
 
-    hidden_size=1000
+    hidden_size=300
 
     model = Sequential()
     model.add(LSTM(hidden_size, return_sequences=True, input_shape=(timesteps, input_dim)))
@@ -278,6 +273,6 @@ def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, iteration, X_active, X_active
 
 #change this
 iteration=1
-X, Y=lstm(Xtest, ytest,Xtrain, ytrain, maxlen, results, w2v, iteration, X_active, X_active_text)
+X, Y=lstm(Xtest, ytest,Xtrain_fin, ytrain, maxlen, results, w2v, iteration, X_active, X_active_text)
 
 print(results)
