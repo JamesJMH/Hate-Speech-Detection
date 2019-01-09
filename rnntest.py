@@ -68,13 +68,13 @@ with open("wassem_hovy_naacl.csv", encoding="utf-8")as f:
         for word in tweet.split():
             X_text.append(tweet.split())
             if label=="none":
-                Y.append([1, 0,0])
+                Y.append(0)
 
             elif label=="racism":
-                Y.append([0,1,0])
+                Y.append(1)
 
             else:
-                Y.append([0,0,1])
+                Y.append(2)
 
             break
 
@@ -145,14 +145,30 @@ Xtrain_red=np.array(Xtrain_red)
 # Xtrain_red=pca.fit_transform(Xtrain_red)
 
 # resampling by smote
-print('Oversampling ...')
+print('Resampling ...')
 from imblearn.over_sampling import SMOTE
+from imblearn.under_sampling import EditedNearestNeighbours
+from imblearn.combine import SMOTETomek, SMOTEENN
 from imblearn.over_sampling import RandomOverSampler
-sm = SMOTE(random_state=42, sampling_strategy='not majority')
+import collections
+print(collections.Counter(ytrain))
+sample_dict={1:4000, 2:6000}
+# sm = SMOTETomek(random_state=42, smote=SMOTE(sampling_strategy=sample_dict, random_state=42, kind='borderline1'))
+
+sm = SMOTE(sampling_strategy=sample_dict, random_state=42, kind='borderline1')
 X_res, Y_res=sm.fit_resample(Xtrain_red, ytrain)
+print('Undersampling ...')
+enn=EditedNearestNeighbours(sampling_strategy='majority', n_neighbors=5, kind_sel='mode')
+X_res, Y_res=enn.fit_resample(X_res, Y_res)
+enn2=EditedNearestNeighbours(sampling_strategy=[1,2])
+X_res, Y_res=enn2.fit_resample(X_res, Y_res)
+
+
+
+
 print(X_res.shape)
 print(Y_res.shape)
-ytrain=Y_res
+print('final count', collections.Counter(Y_res))
 print('Done')
 
 # make X back into the 3 dimensional format, maybe back into the unreduced format
@@ -161,7 +177,30 @@ for x1 in X_res:
     cur=[x1[x:x+100] for x in range(0, len(x1),100)]
     Xtrain_fin.append(cur)
 Xtrain_fin=np.array(Xtrain_fin)
+Xtrain=Xtrain_fin
 print("final Xtrain", Xtrain_fin.shape)
+
+# making y back
+
+ytrain_fin=[]
+for i in range(len(Y_res)):
+    if Y_res[i]==0:
+        ytrain_fin.append([1,0,0])
+    elif Y_res[i]==1:
+        ytrain_fin.append([0,1,0])
+    elif Y_res[i]==2:
+        ytrain_fin.append([0,0,1])
+ytrain=np.array(ytrain_fin)
+
+ytest_fin=[]
+for i in range(len(ytest)):
+    if ytest[i]==0:
+        ytest_fin.append([1,0,0])
+    elif ytest[i]==1:
+        ytest_fin.append([0,1,0])
+    elif ytest[i]==2:
+        ytest_fin.append([0,0,1])
+ytest=np.array(ytest_fin)
 
 X_active = []
 X_active_text = []
@@ -226,7 +265,7 @@ def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, iteration, X_active, X_active
     input_dim=100 # dimension of embedding
 
 
-    hidden_size=300
+    hidden_size=200
 
     model = Sequential()
     model.add(LSTM(hidden_size, return_sequences=True, input_shape=(timesteps, input_dim)))
@@ -237,7 +276,7 @@ def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, iteration, X_active, X_active
 
 
     model.compile(loss='categorical_crossentropy', optimizer="adam", metrics=['accuracy'])
-    model.fit(X, Y, epochs=10)
+    model.fit(X, Y, epochs=5)
 
 
 
@@ -273,6 +312,6 @@ def lstm(Xtest, Ytest, X, Y, maxlen, results, w2v, iteration, X_active, X_active
 
 #change this
 iteration=1
-X, Y=lstm(Xtest, ytest,Xtrain_fin, ytrain, maxlen, results, w2v, iteration, X_active, X_active_text)
+X, Y=lstm(Xtest, ytest,Xtrain, ytrain, maxlen, results, w2v, iteration, X_active, X_active_text)
 
 print(results)
