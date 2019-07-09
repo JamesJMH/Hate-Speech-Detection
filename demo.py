@@ -7,6 +7,8 @@ from sklearn.metrics import recall_score
 from sklearn.metrics import average_precision_score
 from sklearn.svm import SVC
 
+from reveiw dog import dog
+
 with open("glove.6B.50d.txt", "rb") as lines:
     w2v = {line.split()[0]: np.array(map(float, line.split()[1:])) for line in lines}
     for count, (key, value) in enumerate(w2v.iteritems()):
